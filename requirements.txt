@@ -1,0 +1,7 @@
+pandas
+langchain
+langchain_openai
+openpyxl
+python-dotenv
+tiktoken
+pdfplumber
