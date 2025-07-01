@@ -37,6 +37,7 @@ col1, col2 = st.columns(2)
 with col1:
     default_location = st.text_input(
         "Default Location (State)",
+        value="TX",  # Prefilled with TX
         placeholder="e.g., Texas, California, Florida",
         help="Enter the state where you want to search for prospects",
     )
@@ -44,6 +45,7 @@ with col1:
 with col2:
     default_category = st.text_input(
         "Default Category",
+        value="Automobile - Dealers",  # Prefilled with Automobile - Dealers
         placeholder="e.g., Automotive, Healthcare, Retail",
         help="Enter the business category to filter prospects",
     )
@@ -147,8 +149,8 @@ if st.button("🔍 Find Prospects", type="primary", use_container_width=True):
 st.markdown("---")
 st.subheader("ℹ️ How to Use")
 st.markdown("""
-1. **Enter Location**: Specify the state where you want to find prospects
-2. **Enter Category**: Specify the business category to target
+1. **Enter Location**: Specify the state where you want to find prospects (defaults to TX)
+2. **Enter Category**: Specify the business category to target (defaults to Automobile - Dealers)
 3. **Review Products**: All Sinclair marketing products are automatically included in the search
 4. **Click Find Prospects**: The system will analyze potential customers using all configured products
 5. **Review Results**: Each prospect will be displayed with their company name, location, website, and detailed reasoning for selection

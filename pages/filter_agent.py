@@ -5,7 +5,6 @@ import json
 
 from src.session import (
     initialize_chat_history,
-    # get_last4_chat_history,
     add_to_chat_history,
     get_last_question,
 )
@@ -14,7 +13,7 @@ from src.utils.constants import PRODUCTS
 from langchain_core.messages import HumanMessage, AIMessage
 
 # Import the simple logger
-from logger import info, debug, debug_json, warning, error
+from logger import info, debug, debug_json, error
 
 info("Application startup initiated - Filter Agent")
 
@@ -25,6 +24,101 @@ except Exception as e:
     error(f"Failed to set page config: {str(e)}")
     st.error("Failed to initialize page configuration")
 
+# Minimal CSS for professional styling
+st.markdown(
+    """
+<style>
+.prospect-card {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 2rem;
+}
+
+.rank-badge {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+.company-header {
+    color: #2c3e50 !important;
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-item {
+    padding: 0.75rem;
+    background-color: #ffffff;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    color: #2c3e50;
+}
+
+.info-item strong {
+    color: #2c3e50;
+}
+
+.info-item br + * {
+    color: #2c3e50;
+}
+
+.product-badge {
+    background-color: #28a745;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin: 0.2rem 0.2rem 0.2rem 0;
+    display: inline-block;
+    font-weight: 500;
+}
+
+.website-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.website-link:hover {
+    text-decoration: underline;
+}
+
+.results-summary {
+    background-color: #28a745;
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+.content-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 # Navigation
 try:
     if st.button("← Back to Home"):
@@ -33,421 +127,341 @@ try:
 except Exception as e:
     error(f"Navigation button error: {str(e)}")
 
-try:
-    st.title("🔍 Filter Agent")
-    st.markdown("---")
-    debug("Main title and separator rendered")
-except Exception as e:
-    error(f"Error rendering main title: {str(e)}")
+# Header Section
+st.title("🔍 Filter Agent")
+st.markdown("**AI-powered prospect discovery and analysis platform**")
+st.markdown("---")
 
-# Products Display Section
-try:
-    st.subheader("🎯 Your Onboarding Products")
+# Sidebar
+with st.sidebar:
+    st.header("🎯 Available Products")
+    st.markdown("*Your marketing solutions portfolio*")
 
-    for product_name, product_description in PRODUCTS.items():
-        with st.expander(f"📋 {product_name}", expanded=True):
+    for i, (product_name, product_description) in enumerate(PRODUCTS.items(), 1):
+        with st.expander(f"{i}. {product_name}", expanded=False):
             st.write(product_description)
 
     st.markdown("---")
-    debug("Products section rendered successfully")
+    st.markdown("### 📊 Search Guidelines")
+    st.info("""
+    **Effective search examples:**
+    • Companies requiring advertising assistance
+    • Organizations needing social media management
+    • E-commerce businesses seeking digital marketing solutions
+    """)
 
-except Exception as e:
-    error(f"Error rendering products section: {str(e)}")
-
-# Sidebar for settings
-try:
-    with st.sidebar:
-        st.header("Search Settings")
-        st.markdown("Configure your prospect search parameters")
-        debug("Sidebar rendered successfully")
-except Exception as e:
-    error(f"Error rendering sidebar: {str(e)}")
-
-# Main interface
-try:
-    st.subheader("🎯 Prospect Search")
-    st.markdown("Enter your search query to find the best prospects for your business")
-    debug("Main interface elements rendered")
-except Exception as e:
-    error(f"Error rendering main interface: {str(e)}")
+# Main Search Interface
+st.subheader("🔍 Prospect Discovery")
+st.markdown("Enter your search criteria to identify high-potential prospects")
 
 # Search input
-try:
-    search_query = st.text_input(
-        "Search Query",
-        placeholder="e.g., automotive dealers in Texas with website issues",
-        help="Enter a descriptive search query about the type of prospects you're looking for",
-    )
-    debug(
-        f"Search input field rendered. Query length: {len(search_query) if search_query else 0}"
-    )
-except Exception as e:
-    error(f"Error rendering search input: {str(e)}")
-    search_query = ""
+search_query = st.text_area(
+    "**Search Query**",
+    placeholder="""Example searches:
+• Companies requiring advertising assistance
+• Organizations needing social media management
+• E-commerce businesses seeking digital marketing solutions""",
+    height=100,
+    help="Describe the type of prospects you are looking for in detail",
+)
 
 # Search button
-if st.button("🔍 Search Prospects", type="primary", use_container_width=True):
+if st.button("🚀 Find Prospects", type="primary", use_container_width=True):
     info(f"Search button clicked with query: '{search_query}'")
 
     if search_query:
+        # Initialize session
         try:
-            # Initialize chat history
-            info("Initializing chat history")
             initialize_chat_history()
-            debug("Chat history initialized successfully")
+            last_question = get_last_question()
+
+            if last_question:
+                search_query = asyncio.run(
+                    get_formulated_query(
+                        previous_question=last_question,
+                        current_quesion=search_query,
+                    )
+                )
         except Exception as e:
-            error(f"Failed to initialize chat history: {str(e)}")
-            st.error("Failed to initialize session. Please refresh the page.")
+            error(f"Session initialization error: {str(e)}")
+
+        # Phase 1: Market Analysis
+        try:
+            with st.spinner(
+                "🔍 **Phase 1:** Analyzing market signals and detecting filters..."
+            ):
+                (businesses, signals_description, selected_signals) = asyncio.run(
+                    get_prospect_filters(search_query)
+                )
+
+                add_to_chat_history(
+                    HumanMessage(content=search_query),
+                    AIMessage(content=json.dumps(selected_signals)),
+                    search_query,
+                )
+
+            st.success(
+                "✅ **Phase 1 Complete:** Market analysis completed successfully"
+            )
+
+        except Exception as e:
+            error(f"Phase 1 error: {str(e)}")
+            st.error("❌ Market analysis failed. Please try again.")
             st.stop()
 
+        # Phase 2: Prospect Matching
         try:
-            # Get last question for context
-            info("Retrieving last question for context")
-            last_question = get_last_question()
-            debug(f"Last question detected: '{last_question}'")
-
-            # Formulate query if there's previous context
-            if last_question:
-                try:
-                    info("Formulating query based on previous context")
-                    search_query = asyncio.run(
-                        get_formulated_query(
-                            previous_question=last_question,
-                            current_quesion=search_query,
-                        )
-                    )
-                    info(f"Formulated query: '{search_query}'")
-                except Exception as e:
-                    error(f"Error in get_formulated_query: {str(e)}")
-                    warning("Using original search query due to formulation error")
-            else:
-                debug("No previous question found, using original query")
-
-        except Exception as e:
-            error(f"Error in query preparation phase: {str(e)}")
-            # Continue with original query
-            warning("Continuing with original search query")
-
-        try:
-            # First function call - detecting filters
-            info("Starting Phase 1: Filter detection and market analysis")
-            with st.spinner(
-                "🔍 Detecting necessary filters and analyzing market signals..."
-            ):
-                try:
-                    debug("Calling get_prospect_filters function")
-                    (
-                        businesses,
+            with st.spinner("🎯 **Phase 2:** Finding and ranking prospects..."):
+                final_output = asyncio.run(
+                    get_main_prospects(
+                        search_query,
                         signals_description,
                         selected_signals,
-                    ) = asyncio.run(get_prospect_filters(search_query))
-
-                    info("get_prospect_filters completed successfully")
-                    debug(
-                        f"Results - businesses count: {len(businesses) if businesses else 0}"
+                        businesses,
+                        PRODUCTS,
                     )
-                    debug(f"Results - signals_description: {signals_description}")
-                    debug(
-                        f"Results - selected_signals count: {len(selected_signals) if selected_signals else 0}"
-                    )
-
-                except Exception as e:
-                    error(f"Error in get_prospect_filters: {str(e)}")
-                    st.error("Failed to analyze market signals. Please try again.")
-                    st.stop()
-
-                try:
-                    # Add to chat history
-                    debug("Adding results to chat history")
-                    add_to_chat_history(
-                        HumanMessage(content=search_query),
-                        AIMessage(content=json.dumps(selected_signals)),
-                        search_query,
-                    )
-                    debug("Successfully added to chat history")
-                except Exception as e:
-                    error(f"Error adding to chat history: {str(e)}")
-                    warning("Failed to save to chat history, continuing with search")
-
-            try:
-                st.success(
-                    "✅ Market analysis complete! Found relevant business signals."
                 )
-                info("Phase 1 completed - Market analysis success message displayed")
-            except Exception as e:
-                error(f"Error displaying success message: {str(e)}")
+                debug_json(final_output, "FINAL_OUTPUT")
+
+            st.success("✅ **Phase 2 Complete:** Prospect matching completed")
 
         except Exception as e:
-            error(f"Error in Phase 1 (filter detection): {str(e)}")
-            st.error("Failed during market analysis phase. Please try again.")
+            error(f"Phase 2 error: {str(e)}")
+            st.error("❌ Prospect matching failed. Please try again.")
             st.stop()
 
-        try:
-            # Second function call - getting prospects
-            info("Starting Phase 2: Prospect matching")
-            with st.spinner("🎯 Finding the best prospects based on your criteria..."):
-                try:
-                    debug("Calling get_main_prospects function")
-                    final_output = asyncio.run(
-                        get_main_prospects(
-                            search_query,
-                            signals_description,
-                            selected_signals,
-                            businesses,
-                            PRODUCTS,
-                        )
-                    )
+        # Results Display
+        if final_output:
+            st.markdown("---")
 
-                    info("get_main_prospects completed successfully")
-                    debug(
-                        f"Final output count: {len(final_output) if final_output else 0}"
-                    )
+            # Results summary
+            st.markdown(
+                f"""
+                <div class="results-summary">
+                    <h3>🎉 Discovery Complete</h3>
+                    <p>Found {len(final_output)} qualified prospects ranked by potential value</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-                    # Log the complete final output as JSON
-                    debug_json(final_output, "FINAL_OUTPUT")
+            # Sort prospects by rank
+            sorted_prospects = sorted(
+                final_output, key=lambda x: x.get("rank", float("inf"))
+            )
 
-                except Exception as e:
-                    error(f"Error in get_main_prospects: {str(e)}")
-                    st.error("Failed to find prospects. Please try again.")
-                    st.stop()
+            # Display prospects
+            for i, prospect in enumerate(sorted_prospects):
+                rank = prospect.get("rank", "N/A")
+                company_name = prospect.get("Company Name", "Unknown Company")
 
-        except Exception as e:
-            error(f"Error in Phase 2 (prospect matching): {str(e)}")
-            st.error("Failed during prospect matching phase. Please try again.")
-            st.stop()
-
-        try:
-            # Display results
-            if final_output:
-                info(f"Displaying {len(final_output)} prospects to user")
-                st.success(f"🎉 Found {len(final_output)} high-quality prospects!")
-                st.markdown("---")
-
-                # Sort prospects by rank to ensure proper order
-                sorted_prospects = sorted(
-                    final_output, key=lambda x: x.get("rank", float("inf"))
+                # Prospect Card Container
+                st.markdown(
+                    f"""
+                    <div class="prospect-card">
+                        <div class="rank-badge">Rank #{rank}</div>
+                        <h2 class="company-header">{company_name}</h2>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
                 )
 
-                # Display each prospect
-                for prospect in sorted_prospects:
-                    try:
-                        rank = prospect.get("rank", "N/A")
-                        debug(
-                            f"Rendering prospect rank {rank}: {prospect.get('Company Name', 'Unknown')}"
+                # Company Information Grid
+                st.markdown('<div class="info-grid">', unsafe_allow_html=True)
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    st.markdown(
+                        f"""
+                        <div class="info-item">
+                            <strong>📍 Location</strong><br>
+                            {prospect.get("City", "N/A")}, {prospect.get("State", "N/A")}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                with col2:
+                    st.markdown(
+                        f"""
+                        <div class="info-item">
+                            <strong>🏢 Category</strong><br>
+                            {prospect.get("Primary Category", "N/A")}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                with col3:
+                    website = prospect.get("Website URL", "")
+                    if website:
+                        clean_url = website.replace("https://", "").replace(
+                            "http://", ""
                         )
+                        website_display = f'<a href="https://{clean_url}" target="_blank" class="website-link">{clean_url}</a>'
+                    else:
+                        website_display = "Not available"
 
-                        # Create a container for each prospect with better structure
-                        with st.container():
-                            # Header section with company info
-                            company_name = prospect.get(
-                                "Company Name", "Unknown Company"
-                            )
-                            st.subheader(f"🏢 #{rank} - {company_name}")
+                    st.markdown(
+                        f"""
+                        <div class="info-item">
+                            <strong>🌐 Website</strong><br>
+                            {website_display}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-                            # Basic info in columns
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.markdown(
-                                    f"📍 **Location:** {prospect.get('City', 'N/A')}, {prospect.get('State', 'N/A')}"
-                                )
-                            with col2:
-                                st.markdown(
-                                    f"🏷️ **Category:** {prospect.get('Primary Category', 'N/A')}"
-                                )
-                            with col3:
-                                if prospect.get("Website URL"):
-                                    website_url = prospect["Website URL"]
-                                    display_url = website_url.replace(
-                                        "https://", ""
-                                    ).replace("http://", "")
-                                    st.markdown(
-                                        f"🔗 [Visit Website](https://{display_url})"
-                                    )
-                                else:
-                                    st.markdown("🔗 **Website:** Not Available")
+                with col4:
+                    st.markdown(
+                        f"""
+                        <div class="info-item">
+                            <strong>⭐ Rank Score</strong><br>
+                            #{rank} of {len(final_output)}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-                            st.markdown("")  # Add spacing
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                            # Create tabs for better organization
-                            tab1, tab2, tab3 = st.tabs(
-                                ["🏆 Ranking", "📊 Analysis", "🎯 Product Strategy"]
-                            )
+                # Spacing before tabs
+                st.markdown("<br>", unsafe_allow_html=True)
 
-                            with tab1:
-                                if prospect.get("rank_reason"):
-                                    st.markdown(
-                                        "### Why this prospect ranks #{} 🥇".format(
-                                            rank
-                                        )
-                                    )
-                                    rank_reason = prospect.get(
-                                        "rank_reason", "No ranking explanation provided"
-                                    )
-                                    st.info(rank_reason)
-                                    debug(
-                                        f"Prospect rank {rank} ranking reason displayed: {rank_reason[:50]}..."
-                                    )
-                                else:
-                                    st.warning("No ranking explanation available")
-
-                            with tab2:
-                                st.markdown("### Detailed Business Analysis 📈")
-                                reason = prospect.get(
-                                    "Reason_selected", "No detailed analysis provided"
-                                )
-                                # Format the analysis text better
-                                if reason:
-                                    # Split by bullet points or dashes for better formatting
-                                    if "- " in reason:
-                                        analysis_points = reason.split("- ")
-                                        st.markdown("**Key Analysis Points:**")
-                                        for point in analysis_points[
-                                            1:
-                                        ]:  # Skip first empty item
-                                            if point.strip():
-                                                st.markdown(f"• {point.strip()}")
-                                    else:
-                                        st.markdown(reason)
-                                else:
-                                    st.warning("No detailed analysis available")
-                                debug(
-                                    f"Prospect rank {rank} detailed analysis displayed: {reason[:50]}..."
-                                )
-
-                            with tab3:
-                                st.markdown(
-                                    "### Recommended Products & Sales Strategy 💼"
-                                )
-
-                                if prospect.get("products_to_sell") or prospect.get(
-                                    "reason_why_product_selected"
-                                ):
-                                    # Products section
-                                    if prospect.get("products_to_sell"):
-                                        products_to_sell = prospect.get(
-                                            "products_to_sell", "No products specified"
-                                        )
-                                        st.markdown("#### 🛍️ **Recommended Products:**")
-
-                                        # Split products by comma and display as badges
-                                        if (
-                                            isinstance(products_to_sell, str)
-                                            and "," in products_to_sell
-                                        ):
-                                            products_list = [
-                                                p.strip()
-                                                for p in products_to_sell.split(",")
-                                            ]
-                                            product_cols = st.columns(
-                                                len(products_list)
-                                                if len(products_list) <= 3
-                                                else 3
-                                            )
-                                            for i, product in enumerate(products_list):
-                                                with product_cols[i % 3]:
-                                                    st.success(f"✅ {product}")
-                                        else:
-                                            st.success(f"✅ {products_to_sell}")
-
-                                        debug(
-                                            f"Prospect rank {rank} products displayed: {products_to_sell}"
-                                        )
-
-                                    st.markdown("")  # Add spacing
-
-                                    # Strategy reasoning section
-                                    if prospect.get("reason_why_product_selected"):
-                                        product_reason = prospect.get(
-                                            "reason_why_product_selected",
-                                            "No product reasoning provided",
-                                        )
-                                        st.markdown("#### 🎯 **Strategic Reasoning:**")
-
-                                        # Format the reasoning better
-                                        if "- " in product_reason:
-                                            reason_points = product_reason.split("- ")
-                                            for point in reason_points[
-                                                1:
-                                            ]:  # Skip first empty item
-                                                if point.strip():
-                                                    st.markdown(f"💡 {point.strip()}")
-                                        else:
-                                            st.info(product_reason)
-
-                                        debug(
-                                            f"Prospect rank {rank} product reasoning displayed: {product_reason[:50]}..."
-                                        )
-                                else:
-                                    st.warning(
-                                        "No product recommendations available for this prospect"
-                                    )
-
-                                # Add a call-to-action section
-                                st.markdown("#### 📞 **Next Steps:**")
-                                col_a, col_b = st.columns(2)
-                                with col_a:
-                                    if prospect.get("Website URL"):
-                                        website_url = prospect["Website URL"]
-                                        display_url = website_url.replace(
-                                            "https://", ""
-                                        ).replace("http://", "")
-                                        st.markdown(
-                                            f"🔍 [Analyze Website](https://{display_url})"
-                                        )
-                                with col_b:
-                                    st.markdown("📧 **Ready for outreach**")
-
-                        # Add significant spacing between prospects
-                        st.markdown("---")
-                        st.markdown("")  # Extra spacing
-
-                    except Exception as e:
-                        error(
-                            f"Error rendering prospect rank {prospect.get('rank', 'unknown')}: {str(e)}"
-                        )
-                        st.error("Error displaying prospect. Skipping to next.")
-                        continue
-
-                info("All prospects displayed successfully")
-
-            else:
-                warning("No prospects found for search query")
-                st.warning(
-                    "No prospects found matching your search criteria. Try refining your search query."
+                # Tabbed Content
+                tab1, tab2, tab3 = st.tabs(
+                    ["🏆 Ranking Analysis", "📊 Business Profile", "🎯 Sales Strategy"]
                 )
 
-        except Exception as e:
-            error(f"Error in results display section: {str(e)}")
-            st.error("Error occurred while displaying results.")
+                with tab1:
+                    st.markdown('<div class="content-section">', unsafe_allow_html=True)
+                    st.markdown(f"### Ranking Analysis - Position #{rank}")
+                    rank_reason = prospect.get(
+                        "rank_reason", "No ranking explanation provided"
+                    )
+                    st.info(rank_reason)
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                with tab2:
+                    st.markdown('<div class="content-section">', unsafe_allow_html=True)
+                    st.markdown("### Business Profile Analysis")
+                    reason = prospect.get(
+                        "Reason_selected", "No detailed analysis provided"
+                    )
+
+                    if "###" in reason:
+                        # Parse structured content
+                        sections = reason.split("###")
+                        for section in sections[1:]:  # Skip first empty section
+                            if section.strip():
+                                lines = section.strip().split("\n")
+                                section_title = lines[0].strip()
+                                section_content = "\n".join(lines[1:]).strip()
+
+                                st.markdown(f"**{section_title}**")
+                                if section_content:
+                                    st.markdown(section_content)
+                                st.markdown("")
+                    else:
+                        st.markdown(reason)
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                with tab3:
+                    st.markdown('<div class="content-section">', unsafe_allow_html=True)
+                    st.markdown("### Recommended Sales Strategy")
+
+                    # Products section
+                    products_to_sell = prospect.get("products_to_sell", "")
+                    if products_to_sell:
+                        st.markdown("**🛍️ Recommended Products:**")
+
+                        if (
+                            isinstance(products_to_sell, str)
+                            and "," in products_to_sell
+                        ):
+                            products_list = [
+                                p.strip() for p in products_to_sell.split(",")
+                            ]
+                            product_html = "<div style='margin: 1rem 0;'>"
+                            for product in products_list:
+                                product_html += (
+                                    f'<span class="product-badge">{product}</span>'
+                                )
+                            product_html += "</div>"
+                            st.markdown(product_html, unsafe_allow_html=True)
+                        else:
+                            st.markdown(
+                                f'<div style="margin: 1rem 0;"><span class="product-badge">{products_to_sell}</span></div>',
+                                unsafe_allow_html=True,
+                            )
+
+                    # Strategy reasoning
+                    product_reason = prospect.get("reason_why_product_selected", "")
+                    if product_reason:
+                        st.markdown("**🎯 Strategic Rationale:**")
+                        st.markdown(product_reason)
+
+                    # Call to action
+                    st.markdown("---")
+                    st.markdown("**📞 Next Steps:**")
+
+                    action_col1, action_col2 = st.columns(2)
+                    with action_col1:
+                        if prospect.get("Website URL"):
+                            website_url = prospect["Website URL"]
+                            clean_url = website_url.replace("https://", "").replace(
+                                "http://", ""
+                            )
+                            st.link_button("🔍 Analyze Website", f"https://{clean_url}")
+
+                    with action_col2:
+                        st.markdown("📧 **Ready for outreach**")
+
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                # Separator between prospects
+                if i < len(sorted_prospects) - 1:
+                    st.markdown("---")
+                    st.markdown("<br>", unsafe_allow_html=True)
+
+        else:
+            st.warning(
+                "🔍 No prospects found matching your criteria. Please refine your search query."
+            )
 
     else:
-        warning("User submitted empty search query")
-        st.warning("Please enter a search query to begin the prospect search.")
+        st.warning("⚠️ Please enter a search query to begin the prospect search.")
 
-# Instructions section
-try:
-    st.markdown("---")
-    st.subheader("ℹ️ How to Use")
+# Instructions Section
+st.markdown("---")
+st.subheader("📖 User Guide")
+
+instructions_col1, instructions_col2 = st.columns(2)
+
+with instructions_col1:
     st.markdown("""
-1. **Enter Search Query**: Describe the type of prospects you're looking for
-   - Example: "companies which needs advertising help"
-   - Example: "Companies which needs help related to social media services"
-   - Example: "e-commerce businesses needing digital marketing help"
+    #### 🔍 **Search Process**
+    1. **Enter Query**: Describe your target prospects
+    2. **AI Analysis**: System analyzes market signals
+    3. **Prospect Matching**: Identifies best-fit companies
+    4. **Results Review**: Examine ranked prospects
+    """)
 
-2. **Click Search**: The system will:
-   - Analyze market signals and detect relevant filters
-   - Find prospects matching your criteria with detailed reasoning
-   - Recommend specific products and strategies for each prospect
+with instructions_col2:
+    st.markdown("""
+    #### 📊 **Deliverables**
+    • **Ranked prospects** with detailed analysis
+    • **Business intelligence** and market signals
+    • **Product recommendations** for each prospect
+    • **Strategic approach** for engagement
+    """)
 
-3. **Review Results**: Each prospect includes:
-   - Company name and website
-   - Location and business category
-   - Ranking explanation (why they rank where they do)
-   - Detailed analysis of why they're a good fit
-   - **Recommended products and strategic reasoning for outreach**
+st.markdown("""
+#### 💡 **Best Practices**
+- Specify industry, location, or business characteristics
+- Include pain points or challenges you address
+- Use descriptive language for your ideal customer profile
 """)
-    debug("Instructions section rendered successfully")
-except Exception as e:
-    error(f"Error rendering instructions section: {str(e)}")
 
 info("Application fully loaded and ready for user interaction")
