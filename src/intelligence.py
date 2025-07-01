@@ -1,6 +1,6 @@
 import pandas as pd
 from core.chains.business_intelligence_chains import get_intelligence_prospects
-from logger import debug, warning, error, debug_json, info
+from logger import debug_json, info
 
 df1 = pd.read_csv("data/Prospects_5000_12052025_040201.csv", low_memory=False)
 df2 = pd.read_csv("data/Prospects_trimmed_for_reasoning.csv", low_memory=False)
