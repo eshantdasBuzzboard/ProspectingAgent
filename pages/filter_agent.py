@@ -457,11 +457,5 @@ with instructions_col2:
     • **Strategic approach** for engagement
     """)
 
-st.markdown("""
-#### 💡 **Best Practices**
-- Specify industry, location, or business characteristics
-- Include pain points or challenges you address
-- Use descriptive language for your ideal customer profile
-""")
 
 info("Application fully loaded and ready for user interaction")
