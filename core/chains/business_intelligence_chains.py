@@ -9,6 +9,7 @@ from core.pydantic_classes.pydantic_class import (
     Signals,
     QuestionReformulatorOutput,
     CompaniesSelected_Filters,
+    QueryIdentifier,
 )
 from core.prompts.prospecting_agent_prompts import (
     intelligence_prompt,
@@ -16,6 +17,8 @@ from core.prompts.prospecting_agent_prompts import (
     counter_prompt,
     filter_reasoning_prompt,
     query_context_prompt,
+    filter_query_identifier_prompt,
+    default_filter_prompt,
 )
 
 
@@ -36,6 +39,34 @@ async def get_intelligence_prospects(
         intelligence_chain = intelligence_prompt | llmr
         input_data = {"business": business_info, "products": products_info}
         result = await intelligence_chain.ainvoke(input_data)
+
+        final_results = []
+        for i in result.companies:
+            final_results.append(
+                {
+                    "Company_name": i.company_name,
+                    "Reason_selected": i.reason,
+                    "rank": i.rank,
+                    "rank_reason": i.rank_reason,
+                }
+            )
+        return final_results
+    except Exception as e:
+        logging.error(f"Error occured {e}")
+
+
+async def get_default_filter_prospects(
+    products_info, business_info, search_query
+) -> Any:
+    try:
+        llmr = llm.with_structured_output(schema=CompaniesSelected)
+        filter_default_chain = default_filter_prompt | llmr
+        input_data = {
+            "business": business_info,
+            "products": products_info,
+            "search_query": search_query,
+        }
+        result = await filter_default_chain.ainvoke(input_data)
 
         final_results = []
         for i in result.companies:
@@ -136,5 +167,24 @@ async def return_query_formulator(
         }
         result = await query_validator_chain.ainvoke(input_data)
         return result.reformulated_question
+    except Exception as e:
+        return f"An unexpected error occurred {e}"
+
+
+async def return_query_identifier(
+    search_query,
+    PRODUCTS,
+    max_retries=10,
+) -> Any:
+    """Return the final output"""
+    try:
+        structured_llm = llm.with_structured_output(schema=QueryIdentifier)
+        query_identifier_chain = filter_query_identifier_prompt | structured_llm
+        input_data = {
+            "search_query": search_query,
+            "products": PRODUCTS,
+        }
+        result = await query_identifier_chain.ainvoke(input_data)
+        return result.score
     except Exception as e:
         return f"An unexpected error occurred {e}"

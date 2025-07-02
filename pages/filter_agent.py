@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 from src.filters import get_prospect_filters, get_main_prospects, get_formulated_query
+from src.filter_default import get_propsects_default
 import json
 
 from src.session import (
@@ -10,12 +11,18 @@ from src.session import (
 )
 
 from src.utils.constants import PRODUCTS
+from core.chains.business_intelligence_chains import return_query_identifier
 from langchain_core.messages import HumanMessage, AIMessage
 
 # Import the simple logger
 from logger import info, debug, debug_json, error
 
 info("Application startup initiated - Filter Agent")
+
+
+# Default category and state
+CATEGORY = "Automobile - Dealers"
+STATE = "TX"
 
 try:
     st.set_page_config(page_title="Filter Agent", page_icon="🔍", layout="wide")
@@ -114,6 +121,14 @@ st.markdown(
     border-radius: 4px;
     border-left: 4px solid #007bff;
 }
+
+.score-info {
+    background-color: #e3f2fd;
+    padding: 1rem;
+    border-radius: 4px;
+    border-left: 4px solid #2196f3;
+    margin: 1rem 0;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -182,55 +197,100 @@ if st.button("🚀 Find Prospects", type="primary", use_container_width=True):
                         current_quesion=search_query,
                     )
                 )
+
+            # Get query identifier score
+            score = asyncio.run(return_query_identifier(search_query, PRODUCTS))
+            info(f"Query identifier score: {score}")
+
         except Exception as e:
             error(f"Session initialization error: {str(e)}")
-
-        # Phase 1: Market Analysis
-        try:
-            with st.spinner(
-                "🔍 **Phase 1:** Analyzing market signals and detecting filters..."
-            ):
-                (businesses, signals_description, selected_signals) = asyncio.run(
-                    get_prospect_filters(search_query)
-                )
-
-                add_to_chat_history(
-                    HumanMessage(content=search_query),
-                    AIMessage(content=json.dumps(selected_signals)),
-                    search_query,
-                )
-
-            st.success(
-                "✅ **Phase 1 Complete:** Market analysis completed successfully"
-            )
-
-        except Exception as e:
-            error(f"Phase 1 error: {str(e)}")
-            st.error("❌ Market analysis failed. Please try again.")
+            st.error("Failed to initialize session. Please try again.")
             st.stop()
 
-        # Phase 2: Prospect Matching
-        try:
-            with st.spinner("🎯 **Phase 2:** Finding and ranking prospects..."):
-                final_output = asyncio.run(
-                    get_main_prospects(
-                        search_query,
-                        signals_description,
-                        selected_signals,
-                        businesses,
-                        PRODUCTS,
+        # Display score information
+        st.markdown(
+            f"""
+            <div class="score-info">
+                <strong>🎯 Query Analysis Score: {score}</strong><br>
+                {"Using advanced filtering logic" if score == 2 else "Using default category-based filtering"}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Route based on score
+        if score == 2:
+            # Original logic for score 2
+            # Phase 1: Market Analysis
+            try:
+                with st.spinner(
+                    "🔍 **Phase 1:** Analyzing market signals and detecting filters..."
+                ):
+                    (businesses, signals_description, selected_signals) = asyncio.run(
+                        get_prospect_filters(search_query)
                     )
+
+                    add_to_chat_history(
+                        HumanMessage(content=search_query),
+                        AIMessage(content=json.dumps(selected_signals)),
+                        search_query,
+                    )
+
+                st.success(
+                    "✅ **Phase 1 Complete:** Market analysis completed successfully"
                 )
-                debug_json(final_output, "FINAL_OUTPUT")
 
-            st.success("✅ **Phase 2 Complete:** Prospect matching completed")
+            except Exception as e:
+                error(f"Phase 1 error: {str(e)}")
+                st.error("❌ Market analysis failed. Please try again.")
+                st.stop()
 
-        except Exception as e:
-            error(f"Phase 2 error: {str(e)}")
-            st.error("❌ Prospect matching failed. Please try again.")
+            # Phase 2: Prospect Matching
+            try:
+                with st.spinner("🎯 **Phase 2:** Finding and ranking prospects..."):
+                    final_output = asyncio.run(
+                        get_main_prospects(
+                            search_query,
+                            signals_description,
+                            selected_signals,
+                            businesses,
+                            PRODUCTS,
+                        )
+                    )
+                    debug_json(final_output, "FINAL_OUTPUT")
+
+                st.success("✅ **Phase 2 Complete:** Prospect matching completed")
+
+            except Exception as e:
+                error(f"Phase 2 error: {str(e)}")
+                st.error("❌ Prospect matching failed. Please try again.")
+                st.stop()
+
+        elif score == 1:
+            # New logic for score 1 - use default filtering
+            try:
+                with st.spinner(
+                    "🎯 **Processing:** Finding prospects using default category filtering..."
+                ):
+                    final_output = asyncio.run(
+                        get_propsects_default(search_query, STATE, CATEGORY, PRODUCTS)
+                    )
+                    debug_json(final_output, "DEFAULT_FILTER_OUTPUT")
+
+                st.success(
+                    "✅ **Processing Complete:** Default category filtering completed"
+                )
+
+            except Exception as e:
+                error(f"Default filtering error: {str(e)}")
+                st.error("❌ Default filtering failed. Please try again.")
+                st.stop()
+
+        else:
+            st.error(f"❌ Unexpected score value: {score}. Please contact support.")
             st.stop()
 
-        # Results Display
+        # Results Display (common for both score 1 and 2)
         if final_output:
             st.markdown("---")
 
@@ -240,6 +300,7 @@ if st.button("🚀 Find Prospects", type="primary", use_container_width=True):
                 <div class="results-summary">
                     <h3>🎉 Discovery Complete</h3>
                     <p>Found {len(final_output)} qualified prospects ranked by potential value</p>
+                    <p><em>Using {"Advanced Filtering" if score == 2 else "Category-Based Filtering"} (Score: {score})</em></p>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -443,19 +504,18 @@ with instructions_col1:
     st.markdown("""
     #### 🔍 **Search Process**
     1. **Enter Query**: Describe your target prospects
-    2. **AI Analysis**: System analyzes market signals
-    3. **Prospect Matching**: Identifies best-fit companies
+    2. **AI Analysis**: System analyzes query and determines filtering approach
+    3. **Prospect Matching**: Identifies best-fit companies using appropriate method
     4. **Results Review**: Examine ranked prospects
     """)
 
 with instructions_col2:
     st.markdown("""
-    #### 📊 **Deliverables**
+    #### 📊 **Filtering Methods**
+    • **Score 2**: Advanced market signal analysis
+    • **Score 1**: Category-based filtering (Automobile Dealers in TX)
     • **Ranked prospects** with detailed analysis
-    • **Business intelligence** and market signals
     • **Product recommendations** for each prospect
-    • **Strategic approach** for engagement
     """)
-
 
 info("Application fully loaded and ready for user interaction")

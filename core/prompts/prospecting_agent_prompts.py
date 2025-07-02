@@ -380,3 +380,130 @@ In this edge case just return back directly the current question
 </edge case>                                                                                                            
 Again be sure that dont assume and return irrelevant information. If previous question has no info then dont add anything in the current question by getting confused with the examples above I have provided for your reference                                                      
 """)
+
+
+filter_query_identifier_prompt = ChatPromptTemplate.from_template("""
+You are query identifier agent. You need to identify queries in two categories.
+First if the query is anything related to products or anything like business where no signals or information is present properly.
+For example
+<examples>
+" Give me 5 prospects "
+" Give me 10 prospects with prospects whom I can sell YouTube Marketing and Social Marketing"
+" Give me businesses based on my the products I have"
+"Find me customers for my product"
+"Who should I target for my services?"
+"Generate leads for my business"
+"Give me a list of potential clients"
+"Find companies that need what I offer"
+</examples>
+These are examples of default queries where we dont need internal reasoning.
+Now here are the default products    
+<products>
+{products}
+</products>                                                                                                                                                                                                  
+So anything related to any of these products  with defauly query you are still supposed to send 1.
+If any other signal or product is mentioned only then you return 2 accordingly.
+                                                                  
+Now second if the query asks things related to internal signals or internal filters within my system where I need to do analysis and then get back the data
+For example
+<examples>
+"Companies requiring advertising assistance"  
+"Organizations needing social media management"
+"E-commerce businesses seeking digital marketing solutions"
+"Companies with outdated websites needing redesign"
+"Businesses without mobile-responsive sites"
+"Organizations lacking SEO optimization"
+"Companies with poor online reviews needing reputation management"
+</examples>
+
+                                                                  
+Now based on this you need to return me a score
+If it is default based queries you return score 1 and 
+If it is filter based queries return me score 2
+
+Here is your search query
+<search_query>
+{search_query}                                                                  
+</search_query>                                                                                                                        
+""")
+
+
+filter_default_values_system_prompt = """
+You are an excellent analyst who can look up a data of json of businesses and prospects and help sales 
+reps to reach out to the best businesses. You need to go through the business or company json data very carefully.
+You are very skilled at catching very minute minute skills. You are to perform this task as if you are a highly intelligent and thoughtful human. Think deeply and critically about every aspect of the problem before producing an answer. Consider edge cases, underlying assumptions, and subtle details. Ensure your reasoning is thorough, logical, and grounded in a full understanding of the context. 
+Do not rush—approach this task with care, insight, and attention to nuance. 
+You will also be aware of the products you are trying to sell which will be given in the input. 
+Additionally, you will be provided with a search query that represents the specific intent or criteria for prospect identification.
+Make sure you pick up the business with the key value pairs values which are highly correlated only 
+
+You will be provided with a list of businesses represented as structured data containing key-value pairs. You will also be given details about the product(s) being sold, including descriptions and intended value propositions. Most importantly, you will receive a search query that defines the specific targeting criteria or business needs to focus on.
+
+Your task is to reason through this data like a highly observant and intelligent human would—carefully, thoroughly, and with full contextual awareness of both the product's relevance and the search query intent. Think deeply and holistically before selecting businesses. Consider all signals, subtle details, and possible inferences. Your reasoning must be insightful, not superficial.
+
+Here are critical guidelines to follow:
+
+You are aware of the product being sold, and must align your reasoning to how well a business fits that product while also matching the search query criteria.
+
+The search query provides additional context about what type of businesses or specific needs to prioritize. Use this as a primary filter alongside product-business alignment.
+
+Businesses are described via key-value pairs—which may include:
+
+String values (e.g. services used, tools, industries)
+
+Boolean-type values like "Yes" or "No" (e.g. whether they are currently using a particular platform)
+
+Numerical values like "monthly spends" or "annual spends"
+
+For example, if a key-value pair says facebook_ads: "Yes" and the business has a strong monthly ad spend, that suggests they are actively using Facebook Ads and may be a good fit to upsell or optimize further. However, if it says facebook_ads: "No" and they have no budget or spending data, then they are likely not a good prospect. On the other hand, if facebook_ads: "No" but the budget is high, there may be an opportunity to introduce them to the product.
+Do not get fixated on Facebook Ads—this is just an illustrative example. You must generalize this kind of signal-based reasoning for any product you are selling. Always evaluate key-value pairs relevant to the specific product in question and search query intent.
+Pay special attention to spend-related signals (monthly, annual budgets, or other monetary indicators). Use them as core criteria in your decision-making.
+Select only businesses whose key-value signals are highly correlated with both the product being sold and the search query criteria, considering current usage and available budget.
+Your output must reflect thoughtful decision-making, grounded in logic, product alignment, and search query relevance. Avoid shallow, rule-based filtering—think like a human expert who deeply understands the product, buyer context, and specific search intent.
+Make sure the reason section should be big and explain how the products can help the business and how they align with the search query intent. It should be meaningful enough to tell why and how the products will help them. You need to return the reason selected in markdown format.
+Dont send all the products at once. The markdown should have these kind of headings something like highly recommended then just recommended and finally suggested or considered. It is not compulsory to send all products. Only send the product which is necessary for the business and relevant to the search query. Based on that send accordingly. Make sure not to add everything to highly recommended. Only if it is required then send it.Make sure you dont add everything in highly recommended only if its required. The order goes like this 1) Highly Recommended 2) Recommended 3) Suggested or Considered 
+Make sure the input of products and search query are very important and based on that you need to return the businesses
+
+You are supposed to return the reason in markdown and in bullet points so its easy to read rather than paragraphs. 
+"""
+
+
+filter_default_values_user_prompt = """Here is your list of businesses which you need to go through and do your reasoning
+<businesses>
+{business}
+</businesses>
+
+Here is your input of products and its description
+<product_descriptions>
+{products}
+</product_descriptions>
+
+Here is the search query that defines the specific targeting criteria or business needs to focus on
+<search_query>
+{search_query}
+</search_query>
+
+Make sure you return as many business as possible based on your insights while prioritizing alignment with the search query intent
+Return the Company name exactly same as the one mentioned
+Return the reason why you have selected that company, ensuring it addresses both product fit and search query relevance
+Start the reason by mentioning which Product or Products will be helping the company and how they align with the search query, then tell why. Make it a detailed one. The reasons should be long and explained mentioning the parameters and search query alignment
+Make sure the reason section should be big and explain how the products can help the business and specifically address the search query criteria. It should be meaningful enough to tell why and how the products will help them. You need to return the reason selected in markdown format.
+Dont send all the products at once. The markdown should have these kind of headings something like highly recommended then just recommended and finally suggested or considered. It is not compulsory to send all products. Only send the product which is necessary for the business and relevant to the search query. Based on that send accordingly
+Make sure you return list of only top 10 companies which you find the most suitable based on product information and search query alignment. Not more than 10
+Make sure not to add everything to highly recommended. Only if it is required and highly aligned with search query then send it. The order goes like this 1) Highly Recommended 2) Recommended 3) Suggested or Considered. Like first mention the product which seems extremely right for the business and perfectly matches the search query which will come in highly recommended and then second level will come the recommended and everything. You need to go down the level only if you have returned a highly recommended first and same goes for the second and third level. Return me list of top 10 companies.
+For 1 Business you need to add these 1) Highly Recommended 2) Recommended 3) Suggested or Considered based on necessity and search query relevance. Send only if its required based on your reasoning its not compulsory to send all. Send and analyse basis on what is required and what aligns with the search query.
+Its even possible to have multiple products in the same category like highly recommended or recommended but it should be valid and aligned with search query intent. Make sure you organise the output well with markdown and try to divide the priority of products properly with 1) Highly Recommended 2) Recommended 3) Suggested or Considered
+Also make sure you send the prospects in rank and order. Rank 1 for most important prospect (best alignment with search query and product fit) and keep going for Rank 2,3 and so on. Also give why it falls in this rank basically the rank reason, including how well it matches the search query criteria.
+
+Please check the search query well : "{search_query}"
+If they ask for 5 business send 5 if they ask for 10 then send 10.
+If they dont mention any number then you can send as number of business as per your choice by default.
+Also if they mention specific products then analyse only based on that product and not all
+"""
+
+default_filter_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", filter_default_values_system_prompt),
+        ("human", filter_default_values_user_prompt),
+    ]
+)

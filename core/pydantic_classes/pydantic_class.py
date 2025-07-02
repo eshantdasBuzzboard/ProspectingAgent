@@ -83,3 +83,7 @@ class QuestionReformulatorOutput(BaseModel):
     The reformulated question after processing, or the original current question if independent.
     """,
     )
+
+
+class QueryIdentifier(BaseModel):
+    score: int = Field(..., description="score 1 or 2 based on what you identified")
